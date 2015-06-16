@@ -301,6 +301,134 @@ describe('normalizr', function () {
     });
   });
 
+  it('can normalize deeply nested entities with arrays and omit entity keys recursive', function () {
+    var article = new Schema('articles'),
+        user = new Schema('users'),
+        collection = new Schema('collections'),
+        feedSchema,
+        input;
+
+    article.define({
+      author: user,
+      collections: arrayOf(collection)
+    });
+
+    collection.define({
+      curator: user
+    });
+
+    feedSchema = {
+      feed: arrayOf(article)
+    };
+
+    input = {
+      feed: [{
+        id: 1,
+        title: 'Some Article',
+        authorId: 3,
+        author: {
+          id: 3,
+          name: 'Mike Persson'
+        },
+        collections: [{
+          id: 1,
+          title: 'Awesome Writing',
+          curatorId: 4,
+          curator: {
+            id: 4,
+            name: 'Andy Warhol'
+          }
+        }, {
+          id: 7,
+          title: 'Even Awesomer',
+          curatorId: 100,
+          curator: {
+            id: 100,
+            name: 'T.S. Eliot'
+          }
+        }]
+      }, {
+        id: 2,
+        title: 'Other Article',
+        authorId: 2,
+        collections: [{
+          id: 2,
+          title: 'Neverhood',
+          curatorId: 120,
+          curator: {
+            id: 120,
+            name: 'Ada Lovelace'
+          }
+        }],
+        author: {
+          id: 2,
+          name: 'Pete Hunt'
+        }
+      }]
+    };
+
+    Object.freeze(input);
+
+    normalize(input, feedSchema, {assignEntity: function(){}}).should.eql({
+      result: {
+        feed: [1, 2]
+      },
+      entities: {
+        articles: {
+          1: {
+            id: 1,
+            title: 'Some Article',
+            authorId: 3,
+          },
+          2: {
+            id: 2,
+            title: 'Other Article',
+            authorId: 2,
+          }
+        },
+        collections: {
+          1: {
+            id: 1,
+            title: 'Awesome Writing',
+            curatorId: 4
+          },
+          2: {
+            id: 2,
+            title: 'Neverhood',
+            curatorId: 120
+          },
+          7: {
+            id: 7,
+            title: 'Even Awesomer',
+            curatorId: 100
+          }
+        },
+        users: {
+          2: {
+            id: 2,
+            name: 'Pete Hunt'
+          },
+          3: {
+            id: 3,
+            name: 'Mike Persson'
+          },
+          4: {
+            id: 4,
+            name: 'Andy Warhol'
+          },
+          100: {
+            id: 100,
+            name: 'T.S. Eliot'
+          },
+          120: {
+            id: 120,
+            name: 'Ada Lovelace'
+          }
+        }
+      }
+    });
+  });
+
   it('can normalize mutually recursive entities', function () {
     var article = new Schema('articles'),
         user = new Schema('users'),
